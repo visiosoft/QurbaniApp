@@ -417,4 +417,51 @@ const getUserQurbani = async (req, res) => {
     }
 };
 
-module.exports = { login, logout, checkAuth, userLogin, checkUserAuth, authenticateUser, getUserQurbani };
+// Get current user's profile (for refreshing user data)
+const getUserProfile = async (req, res) => {
+    try {
+        const user = req.user; // From JWT middleware
+
+        if (!user) {
+            return res.status(401).json({
+                error: 'Unauthorized',
+                message: 'User not authenticated'
+            });
+        }
+
+        // Fetch fresh user data with groupId populated
+        const freshUser = await User.findById(user._id).populate('groupId');
+
+        if (!freshUser) {
+            return res.status(404).json({
+                error: 'Not found',
+                message: 'User not found'
+            });
+        }
+
+        return res.json({
+            success: true,
+            user: {
+                id: freshUser._id,
+                name: freshUser.name,
+                passportNumber: freshUser.passportNumber,
+                phoneNumber: freshUser.phoneNumber,
+                qurbaniType: freshUser.qurbaniType,
+                accountType: freshUser.accountType,
+                status: freshUser.status,
+                groupId: freshUser.groupId,
+                companyId: freshUser.companyId,
+                createdAt: freshUser.createdAt
+            }
+        });
+
+    } catch (error) {
+        console.error('Get user profile error:', error);
+        res.status(500).json({
+            error: 'Server error',
+            message: error.message
+        });
+    }
+};
+
+module.exports = { login, logout, checkAuth, userLogin, checkUserAuth, authenticateUser, getUserQurbani, getUserProfile };

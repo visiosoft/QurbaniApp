@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
-const { login, logout, checkAuth, userLogin, checkUserAuth, authenticateUser, getUserQurbani } = require('../controllers/authController');
+const { requireUserAuth } = require('../middleware/auth');
+const { login, logout, checkAuth, userLogin, checkUserAuth, authenticateUser, getUserQurbani, getUserProfile } = require('../controllers/authController');
 
 // @route   POST /api/auth/login
 // @desc    Admin/User login (username=phone, password=passport)
@@ -36,5 +37,10 @@ router.get('/user/check', checkUserAuth);
 // @desc    Get current user's qurbani record
 // @access  Private
 router.get('/user/qurbani', getUserQurbani);
+
+// @route   GET /api/auth/user/profile
+// @desc    Get current user's profile (refresh user data)
+// @access  Private (JWT)
+router.get('/user/profile', requireUserAuth, getUserProfile);
 
 module.exports = router;
