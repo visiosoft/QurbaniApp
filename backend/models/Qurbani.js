@@ -30,6 +30,10 @@ const qurbaniSchema = new mongoose.Schema({
         type: Date,
         default: Date.now
     },
+    readyAt: {
+        type: Date,
+        default: null
+    },
     completedAt: {
         type: Date,
         default: null

@@ -149,7 +149,7 @@ const createUser = async (req, res) => {
 // Update user
 const updateUser = async (req, res) => {
     try {
-        const { name, phoneNumber, status } = req.body;
+        const { name, phoneNumber, status, qurbaniType } = req.body;
 
         const user = await User.findOne({
             _id: req.params.id,
@@ -167,6 +167,7 @@ const updateUser = async (req, res) => {
         if (name) user.name = name;
         if (phoneNumber) user.phoneNumber = phoneNumber;
         if (status) user.status = status;
+        if (qurbaniType) user.qurbaniType = qurbaniType;
 
         await user.save();
 

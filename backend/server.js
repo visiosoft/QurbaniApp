@@ -59,6 +59,24 @@ app.use((err, req, res, next) => {
 
 const PORT = process.env.PORT || 5000;
 
-app.listen(PORT, () => {
+app.listen(PORT, '0.0.0.0', () => {
     console.log(`Server running on port ${PORT}`);
+    console.log(`Local: http://localhost:${PORT}`);
+
+    // Get network IP for mobile device access
+    const os = require('os');
+    const networkInterfaces = os.networkInterfaces();
+    const networkIPs = [];
+
+    Object.keys(networkInterfaces).forEach((interfaceName) => {
+        networkInterfaces[interfaceName].forEach((iface) => {
+            if (iface.family === 'IPv4' && !iface.internal) {
+                networkIPs.push(iface.address);
+            }
+        });
+    });
+
+    if (networkIPs.length > 0) {
+        console.log(`Network: http://${networkIPs[0]}:${PORT} (for mobile devices)`);
+    }
 });

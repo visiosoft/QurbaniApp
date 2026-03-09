@@ -208,6 +208,10 @@ const updateQurbaniStatus = async (req, res) => {
             qurbani.notes = notes;
         }
 
+        if (status === 'ready' && oldStatus !== 'ready') {
+            qurbani.readyAt = new Date();
+        }
+
         if (status === 'done' && oldStatus !== 'done') {
             qurbani.completedAt = new Date();
         }
@@ -409,7 +413,9 @@ const getMyQurbani = async (req, res) => {
                 userId: qurbani.userId,
                 groupId: qurbani.groupId,
                 createdAt: qurbani.createdAt,
+                readyAt: qurbani.readyAt,
                 completedAt: qurbani.completedAt,
+                updatedAt: qurbani.updatedAt,
                 notes: qurbani.notes
             }
         });
@@ -469,6 +475,9 @@ const updateMyQurbaniStatus = async (req, res) => {
             }
 
             qurbani.status = status;
+            if (status === 'ready' && oldStatus !== 'ready') {
+                qurbani.readyAt = new Date();
+            }
             if (status === 'done' && oldStatus !== 'done') {
                 qurbani.completedAt = new Date();
             }
@@ -497,7 +506,9 @@ const updateMyQurbaniStatus = async (req, res) => {
                 accountType: qurbani.accountType,
                 status: updatedUser.accountType === 'individual' ? qurbani.status : updatedUser.status, // Return user status for group members
                 createdAt: qurbani.createdAt,
+                readyAt: qurbani.readyAt,
                 completedAt: qurbani.completedAt,
+                updatedAt: qurbani.updatedAt,
                 notes: qurbani.notes
             } : null
         });
