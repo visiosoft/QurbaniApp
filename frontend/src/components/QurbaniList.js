@@ -7,6 +7,7 @@ const QurbaniList = ({ adminRole, adminInfo }) => {
     const [companies, setCompanies] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
+    const [selectedItems, setSelectedItems] = useState([]); // For multi-select
     const [pagination, setPagination] = useState({
         currentPage: 1,
         totalPages: 1,
@@ -55,7 +56,9 @@ const QurbaniList = ({ adminRole, adminInfo }) => {
         try {
             setLoading(true);
             const response = await qurbaniAPI.getAll(filters);
-            setQurbaniList(response.data.qurbaniRequests);
+            // Filter out group records - only show individual accounts
+            const individualOnly = response.data.qurbaniRequests.filter(q => q.accountType === 'individual');
+            setQurbaniList(individualOnly);
             setPagination({
                 currentPage: parseInt(response.data.currentPage),
                 totalPages: response.data.totalPages,
@@ -109,11 +112,11 @@ const QurbaniList = ({ adminRole, adminInfo }) => {
 
     const exportToCSV = () => {
         // Prepare CSV data
-        const headers = ['Type', 'Account Type', 'Name/Group', 'Status', 'Created', 'Completed'];
+        const headers = ['Type', 'Account Type', 'Name', 'Status', 'Created', 'Completed'];
         const rows = qurbaniList.map(q => [
             q.qurbaniType,
             q.accountType,
-            q.userId ? q.userId.name : (q.groupId ? q.groupId.groupName : 'N/A'),
+            q.userId ? q.userId.name : 'N/A',
             q.status,
             new Date(q.createdAt).toLocaleDateString(),
             q.completedAt ? new Date(q.completedAt).toLocaleDateString() : 'N/A'
@@ -167,6 +170,51 @@ const QurbaniList = ({ adminRole, adminInfo }) => {
         });
     };
 
+    // Multi-select handlers
+    const toggleSelectItem = (id) => {
+        setSelectedItems(prev => 
+            prev.includes(id) ? prev.filter(item => item !== id) : [...prev, id]
+        );
+    };
+
+    const toggleSelectAll = () => {
+        if (selectedItems.length === qurbaniList.length) {
+            setSelectedItems([]);
+        } else {
+            // Only select items that are not already done
+            const selectableItems = qurbaniList
+                .filter(q => q.status !== 'done')
+                .map(q => q._id);
+            setSelectedItems(selectableItems);
+        }
+    };
+
+    const handleBulkMarkAsDone = async () => {
+        if (selectedItems.length === 0) {
+            alert('Please select items to mark as done');
+            return;
+        }
+
+        if (!window.confirm(`Are you sure you want to mark ${selectedItems.length} item(s) as done?`)) {
+            return;
+        }
+
+        try {
+            // Mark each selected item as done
+            await Promise.all(
+                selectedItems.map(id => 
+                    qurbaniAPI.updateStatus(id, { status: 'done' })
+                )
+            );
+            
+            setSelectedItems([]); // Clear selection
+            fetchQurbani(); // Refresh list
+            alert(`Successfully marked ${selectedItems.length} item(s) as done`);
+        } catch (err) {
+            alert(err.response?.data?.message || 'Failed to mark items as done');
+        }
+    };
+
     return (
         <div className="qurbani-page">
             <div className="page-header">
@@ -195,7 +243,7 @@ const QurbaniList = ({ adminRole, adminInfo }) => {
                 <div className="filters">
                     <input
                         type="text"
-                        placeholder="Search by name, group, or passport..."
+                        placeholder="Search by name or passport..."
                         value={searchInput}
                         onChange={handleSearchChange}
                         className="search-input"
@@ -215,7 +263,6 @@ const QurbaniList = ({ adminRole, adminInfo }) => {
                     <select name="accountType" value={filters.accountType} onChange={handleFilterChange}>
                         <option value="">All Account Types</option>
                         <option value="individual">Individual</option>
-                        <option value="group">Group</option>
                     </select>
 
                     <select name="status" value={filters.status} onChange={handleFilterChange}>
@@ -244,29 +291,66 @@ const QurbaniList = ({ adminRole, adminInfo }) => {
             ) : error ? (
                 <div className="error">{error}</div>
             ) : (
-                <div className="table-container">
-                    <table className="qurbani-table">
-                        <thead>
-                            <tr>
-                                <th>Type</th>
-                                <th>Account</th>
-                                <th>Details</th>
-                                {isSuperAdmin && <th>Company</th>}
-                                <th>Status</th>
-                                <th>Created</th>
-                                <th>Completed</th>
-                                <th>Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {qurbaniList.length === 0 ? (
+                <>
+                    {/* Bulk Actions Bar */}
+                    {selectedItems.length > 0 && (
+                        <div className="bulk-actions-bar">
+                            <span className="selected-count">
+                                {selectedItems.length} item(s) selected
+                            </span>
+                            <button 
+                                className="bulk-action-btn mark-done"
+                                onClick={handleBulkMarkAsDone}
+                            >
+                                ✓ Mark Selected as Done
+                            </button>
+                            <button 
+                                className="bulk-action-btn clear"
+                                onClick={() => setSelectedItems([])}
+                            >
+                                Clear Selection
+                            </button>
+                        </div>
+                    )}
+
+                    <div className="table-container">
+                        <table className="qurbani-table">
+                            <thead>
                                 <tr>
-                                    <td colSpan={isSuperAdmin ? "8" : "7"} className="no-data">No Qurbani requests found</td>
+                                    <th className="checkbox-column">
+                                        <input
+                                            type="checkbox"
+                                            onChange={toggleSelectAll}
+                                            checked={selectedItems.length === qurbaniList.filter(q => q.status !== 'done').length && qurbaniList.length > 0}
+                                        />
+                                    </th>
+                                    <th>Type</th>
+                                    <th>Account</th>
+                                    <th>Details</th>
+                                    {isSuperAdmin && <th>Company</th>}
+                                    <th>Status</th>
+                                    <th>Created</th>
+                                    <th>Completed</th>
+                                    <th>Actions</th>
                                 </tr>
-                            ) : (
-                                qurbaniList.map((qurbani) => (
-                                    <tr key={qurbani._id}>
-                                        <td>
+                            </thead>
+                            <tbody>
+                                {qurbaniList.length === 0 ? (
+                                    <tr>
+                                        <td colSpan={isSuperAdmin ? "9" : "8"} className="no-data">No Qurbani requests found</td>
+                                    </tr>
+                                ) : (
+                                    qurbaniList.map((qurbani) => (
+                                        <tr key={qurbani._id} className={selectedItems.includes(qurbani._id) ? 'selected-row' : ''}>
+                                            <td className="checkbox-column">
+                                                <input
+                                                    type="checkbox"
+                                                    checked={selectedItems.includes(qurbani._id)}
+                                                    onChange={() => toggleSelectItem(qurbani._id)}
+                                                    disabled={qurbani.status === 'done'}
+                                                />
+                                            </td>
+                                            <td>
                                             <span className="qurbani-type">
                                                 🐑 {qurbani.qurbaniType}
                                             </span>
@@ -283,11 +367,6 @@ const QurbaniList = ({ adminRole, adminInfo }) => {
                                                     <small>{qurbani.userId.passportNumber}</small><br />
                                                     <small>{qurbani.userId.phoneNumber}</small>
                                                 </div>
-                                            ) : qurbani.groupId ? (
-                                                <div>
-                                                    <strong>{qurbani.groupId.groupName}</strong><br />
-                                                    <small>{qurbani.groupId.members?.length || 0} members</small>
-                                                </div>
                                             ) : (
                                                 'N/A'
                                             )}
@@ -297,10 +376,6 @@ const QurbaniList = ({ adminRole, adminInfo }) => {
                                                 {qurbani.userId?.companyId ? (
                                                     <span className="company-badge">
                                                         {qurbani.userId.companyId.companyName}
-                                                    </span>
-                                                ) : qurbani.groupId?.members?.[0]?.companyId ? (
-                                                    <span className="company-badge">
-                                                        {qurbani.groupId.members[0].companyId.companyName}
                                                     </span>
                                                 ) : (
                                                     'N/A'
@@ -337,6 +412,7 @@ const QurbaniList = ({ adminRole, adminInfo }) => {
                         </tbody>
                     </table>
                 </div>
+                </>
             )}
 
             {/* Pagination */}

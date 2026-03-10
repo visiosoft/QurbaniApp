@@ -26,7 +26,7 @@ app.use(express.urlencoded({ extended: true }));
 // Log all responses to see Set-Cookie headers
 app.use((req, res, next) => {
     const originalEnd = res.end;
-    res.end = function(...args) {
+    res.end = function (...args) {
         if (req.path === '/api/auth/login' || req.path.includes('auth')) {
             const setCookie = res.getHeader('Set-Cookie');
             console.log(`📤 Response for ${req.path}:`, {
@@ -120,7 +120,7 @@ app.get('/api/test-cookie', (req, res) => {
         if (err) {
             return res.status(500).json({ error: 'Session save failed', details: err.message });
         }
-        res.json({ 
+        res.json({
             message: 'Session value set',
             sessionID: req.sessionID,
             testValue: req.session.testValue,

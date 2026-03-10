@@ -11,13 +11,14 @@ const Groups = ({ adminRole, adminInfo }) => {
     const [error, setError] = useState('');
     const [showForm, setShowForm] = useState(false);
     const [showAddMember, setShowAddMember] = useState(null);
+    const [viewMode, setViewMode] = useState('grid'); // 'grid' or 'table'
+    const [expandedRows, setExpandedRows] = useState([]); // Track expanded groups in table view
     const [pagination, setPagination] = useState({
         currentPage: 1,
         totalPages: 1,
         total: 0
     });
     const [filters, setFilters] = useState({
-        status: '',
         qurbaniType: '',
         search: '',
         companyId: '',
@@ -99,7 +100,7 @@ const Groups = ({ adminRole, adminInfo }) => {
     useEffect(() => {
         fetchGroups();
         fetchAvailableUsers();
-    }, [filters.status, filters.qurbaniType, filters.search, filters.companyId, filters.page]);
+    }, [filters.qurbaniType, filters.search, filters.companyId, filters.page]);
 
     const fetchGroups = async () => {
         try {
@@ -142,7 +143,6 @@ const Groups = ({ adminRole, adminInfo }) => {
 
     const clearFilters = () => {
         setFilters({
-            status: '',
             qurbaniType: '',
             search: '',
             companyId: '',
@@ -158,7 +158,6 @@ const Groups = ({ adminRole, adminInfo }) => {
 
     const getActiveFiltersCount = () => {
         let count = 0;
-        if (filters.status) count++;
         if (filters.qurbaniType) count++;
         if (filters.search) count++;
         if (filters.companyId) count++;
@@ -245,12 +244,30 @@ const Groups = ({ adminRole, adminInfo }) => {
         <div className="groups-page">
             <div className="page-header">
                 <h1>Groups Management</h1>
-                <button
-                    className="add-button"
-                    onClick={() => setShowForm(!showForm)}
-                >
-                    {showForm ? 'Cancel' : '+ Create Group'}
-                </button>
+                <div style={{ display: 'flex', gap: '10px' }}>
+                    <div className="view-toggle">
+                        <button
+                            className={`view-btn ${viewMode === 'grid' ? 'active' : ''}`}
+                            onClick={() => setViewMode('grid')}
+                            title="Grid View"
+                        >
+                            ⊞ Grid
+                        </button>
+                        <button
+                            className={`view-btn ${viewMode === 'table' ? 'active' : ''}`}
+                            onClick={() => setViewMode('table')}
+                            title="Table View"
+                        >
+                            ≡ Table
+                        </button>
+                    </div>
+                    <button
+                        className="add-button"
+                        onClick={() => setShowForm(!showForm)}
+                    >
+                        {showForm ? 'Cancel' : '+ Create Group'}
+                    </button>
+                </div>
             </div>
 
             {/* Create Group Form */}
@@ -339,13 +356,6 @@ const Groups = ({ adminRole, adminInfo }) => {
                         </select>
                     )}
 
-                    <select name="status" value={filters.status} onChange={handleFilterChange}>
-                        <option value="">All Status</option>
-                        <option value="pending">Pending</option>
-                        <option value="ready">Ready</option>
-                        <option value="done">Done</option>
-                    </select>
-
                     <select name="qurbaniType" value={filters.qurbaniType} onChange={handleFilterChange}>
                         <option value="">All Types</option>
                         <option value="Sheep">Sheep</option>
@@ -364,7 +374,7 @@ const Groups = ({ adminRole, adminInfo }) => {
                 <div className="loading">Loading groups...</div>
             ) : error ? (
                 <div className="error">{error}</div>
-            ) : (
+            ) : viewMode === 'grid' ? (
                 <div className="groups-grid">
                     {groups.length === 0 ? (
                         <div className="no-data">No groups found</div>
@@ -381,9 +391,6 @@ const Groups = ({ adminRole, adminInfo }) => {
                                             </span>
                                         )}
                                     </h3>
-                                    <span className={`status ${group.status}`}>
-                                        {group.status}
-                                    </span>
                                 </div>
 
                                 <div className="group-info">
@@ -506,6 +513,225 @@ const Groups = ({ adminRole, adminInfo }) => {
                             </div>
                         ))
                     )}
+                </div>
+            ) : (
+                /* Table View */
+                <div className="table-container">
+                    <table className="groups-table">
+                        <thead>
+                            <tr>
+                                <th style={{ width: '40px' }}></th>
+                                <th>Group Name</th>
+                                {isSuperAdmin && <th>Company</th>}
+                                <th>Representative</th>
+                                <th>Type</th>
+                                <th>Members Count</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {groups.length === 0 ? (
+                                <tr>
+                                    <td colSpan={isSuperAdmin ? "7" : "6"} className="no-data">No groups found</td>
+                                </tr>
+                            ) : (
+                                groups.map((group) => {
+                                    const isExpanded = expandedRows.includes(group._id);
+                                    return (
+                                        <React.Fragment key={group._id}>
+                                            {/* Main Group Row */}
+                                            <tr className={isExpanded ? 'expanded-row' : ''}>
+                                                <td>
+                                                    <button
+                                                        className="expand-btn"
+                                                        onClick={() => {
+                                                            setExpandedRows(prev =>
+                                                                prev.includes(group._id)
+                                                                    ? prev.filter(id => id !== group._id)
+                                                                    : [...prev, group._id]
+                                                            );
+                                                        }}
+                                                        title={isExpanded ? "Collapse members" : "Expand members"}
+                                                    >
+                                                        {isExpanded ? '▼' : '▶'}
+                                                    </button>
+                                                </td>
+                                                <td>
+                                                    <strong>{group.groupName}</strong>
+                                                </td>
+                                                {isSuperAdmin && (
+                                                    <td>
+                                                        {group.companyId ? (
+                                                            <span className="company-badge">
+                                                                {group.companyId.companyName}
+                                                            </span>
+                                                        ) : (
+                                                            'N/A'
+                                                        )}
+                                                    </td>
+                                                )}
+                                                <td>{group.representative?.name || 'N/A'}</td>
+                                                <td>
+                                                    <span className="qurbani-type">
+                                                        🐑 {group.qurbaniType}
+                                                    </span>
+                                                </td>
+                                                <td>
+                                                    <strong>{group.members.length}</strong> member{group.members.length !== 1 ? 's' : ''}
+                                                </td>
+                                                <td>
+                                                    <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                                                        <button
+                                                            className="add-member-btn-small"
+                                                            onClick={() => setShowAddMember(showAddMember === group._id ? null : group._id)}
+                                                            title="Add Member"
+                                                        >
+                                                            {showAddMember === group._id ? '− Cancel' : '+ Member'}
+                                                        </button>
+                                                        <button
+                                                            className="delete-btn-small"
+                                                            onClick={() => handleDelete(group._id)}
+                                                            title="Delete Group"
+                                                        >
+                                                            Delete
+                                                        </button>
+                                                    </div>
+                                                </td>
+                                            </tr>
+
+                                            {/* Expanded Members Row */}
+                                            {isExpanded && (
+                                                <tr className="nested-row">
+                                                    <td colSpan={isSuperAdmin ? "7" : "6"}>
+                                                        <div className="nested-members-container">
+                                                            <h4 style={{ margin: '0 0 10px 0', color: '#333' }}>
+                                                                Members of {group.groupName}
+                                                            </h4>
+                                                            <table className="nested-members-table">
+                                                                <thead>
+                                                                    <tr>
+                                                                        <th>Name</th>
+                                                                        <th>Passport Number</th>
+                                                                        <th>Phone Number</th>
+                                                                        <th>Role</th>
+                                                                        <th>Action</th>
+                                                                    </tr>
+                                                                </thead>
+                                                                <tbody>
+                                                                    {group.members.map((member) => (
+                                                                        <tr key={member._id}>
+                                                                            <td><strong>{member.name}</strong></td>
+                                                                            <td>{member.passportNumber}</td>
+                                                                            <td>{member.phoneNumber}</td>
+                                                                            <td>
+                                                                                {group.representative?._id === member._id ? (
+                                                                                    <span className="rep-badge">Representative</span>
+                                                                                ) : (
+                                                                                    'Member'
+                                                                                )}
+                                                                            </td>
+                                                                            <td>
+                                                                                {group.representative?._id !== member._id && (
+                                                                                    <button
+                                                                                        className="remove-member-btn-tiny"
+                                                                                        onClick={() => handleRemoveMember(group._id, member._id)}
+                                                                                        title="Remove member"
+                                                                                    >
+                                                                                        Remove
+                                                                                    </button>
+                                                                                )}
+                                                                            </td>
+                                                                        </tr>
+                                                                    ))}
+                                                                </tbody>
+                                                            </table>
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                            )}
+
+                                            {/* Add Member Row */}
+                                            {showAddMember === group._id && (
+                                                <tr className="add-member-row">
+                                                    <td colSpan={isSuperAdmin ? "7" : "6"}>
+                                                        <div className="add-member-inline-form">
+                                                            <label>Select User:</label>
+                                                            <select
+                                                                value={memberData.userId}
+                                                                onChange={(e) => setMemberData({ ...memberData, userId: e.target.value })}
+                                                            >
+                                                                <option value="">Choose a user...</option>
+                                                                {users.map((user) => (
+                                                                    <option key={user._id} value={user._id}>
+                                                                        {user.name} - {user.passportNumber}
+                                                                    </option>
+                                                                ))}
+                                                            </select>
+                                                            <button
+                                                                className="confirm-btn"
+                                                                onClick={() => handleAddMember(group._id)}
+                                                                disabled={!memberData.userId}
+                                                            >
+                                                                Add Member
+                                                            </button>
+                                                            <button
+                                                                className="cancel-btn"
+                                                                onClick={() => setShowAddMember(null)}
+                                                            >
+                                                                Cancel
+                                                            </button>
+                                                            <button
+                                                                className="create-user-btn"
+                                                                type="button"
+                                                                onClick={() => { setShowCreateUser(true); setModalGroupId(group._id); }}
+                                                            >
+                                                                + Create New User
+                                                            </button>
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                            )}
+                                        </React.Fragment>
+                                    );
+                                })
+                            )}
+                        </tbody>
+                    </table>
+                </div>
+            )}
+
+            {/* Create User Modal (works for both grid and table views) */}
+            {showCreateUser && modalGroupId && (
+                <div className="modal-overlay">
+                    <div className="modal-content">
+                        <h3>Create New User</h3>
+                        <form className="create-user-form" onSubmit={handleCreateUser}>
+                            <input
+                                type="text"
+                                placeholder="Name"
+                                value={newUserData.name}
+                                onChange={e => setNewUserData({ ...newUserData, name: e.target.value })}
+                                required
+                            />
+                            <input
+                                type="text"
+                                placeholder="Passport Number"
+                                value={newUserData.passportNumber}
+                                onChange={e => setNewUserData({ ...newUserData, passportNumber: e.target.value })}
+                                required
+                            />
+                            <input
+                                type="text"
+                                placeholder="Phone"
+                                value={newUserData.phoneNumber}
+                                onChange={e => setNewUserData({ ...newUserData, phoneNumber: e.target.value })}
+                            />
+                            <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
+                                <button type="submit" className="confirm-btn">Create User</button>
+                                <button type="button" className="cancel-btn" onClick={() => { setShowCreateUser(false); setModalGroupId(null); }}>Cancel</button>
+                            </div>
+                        </form>
+                    </div>
                 </div>
             )}
 
