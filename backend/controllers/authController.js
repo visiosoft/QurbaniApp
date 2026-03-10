@@ -106,22 +106,41 @@ const login = async (req, res) => {
             req.session.companyId = admin.companyId._id.toString();
             req.session.role = admin.role;
 
-            return res.json({
-                success: true,
-                message: 'Admin login successful',
-                userType: 'admin',
-                admin: {
-                    id: admin._id,
-                    username: admin.username,
-                    fullName: admin.fullName,
-                    email: admin.email,
-                    role: admin.role,
-                    company: {
-                        id: admin.companyId._id,
-                        name: admin.companyId.companyName,
-                        code: admin.companyId.companyCode
-                    }
+            console.log('🔐 Admin login successful, session set:', {
+                sessionID: req.sessionID,
+                adminId: req.session.adminId,
+                role: req.session.role
+            });
+
+            // Force session save before responding
+            req.session.save((err) => {
+                if (err) {
+                    console.error('❌ Session save error:', err);
+                    return res.status(500).json({
+                        error: 'Session error',
+                        message: 'Failed to create session'
+                    });
                 }
+
+                console.log('✅ Session saved successfully');
+
+                return res.json({
+                    success: true,
+                    message: 'Admin login successful',
+                    userType: 'admin',
+                    admin: {
+                        id: admin._id,
+                        username: admin.username,
+                        fullName: admin.fullName,
+                        email: admin.email,
+                        role: admin.role,
+                        company: {
+                            id: admin.companyId._id,
+                            name: admin.companyId.companyName,
+                            code: admin.companyId.companyCode
+                        }
+                    }
+                });
             });
         }
 
@@ -210,14 +229,24 @@ const logout = async (req, res) => {
 
 // Check authentication status
 const checkAuth = async (req, res) => {
+    console.log('🔍 Auth check called:', {
+        hasSession: !!req.session,
+        sessionID: req.sessionID,
+        adminId: req.session?.adminId,
+        cookieHeader: req.headers.cookie ? 'present' : 'MISSING',
+        origin: req.headers.origin
+    });
+
     if (req.session && req.session.adminId) {
         try {
             const admin = await Admin.findById(req.session.adminId).populate('companyId');
 
             if (!admin) {
+                console.log('❌ Admin not found for session adminId:', req.session.adminId);
                 return res.json({ authenticated: false });
             }
 
+            console.log('✅ Auth check passed for admin:', admin.username);
             return res.json({
                 authenticated: true,
                 admin: {
@@ -232,11 +261,12 @@ const checkAuth = async (req, res) => {
                 }
             });
         } catch (error) {
-            console.error('Check auth error:', error);
+            console.error('❌ Check auth error:', error);
             return res.json({ authenticated: false });
         }
     }
 
+    console.log('❌ No session or no adminId in session');
     res.json({ authenticated: false });
 };
 
