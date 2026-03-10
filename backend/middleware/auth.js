@@ -3,11 +3,20 @@ const User = require('../models/User');
 
 // Middleware to check if admin is authenticated
 const requireAuth = (req, res, next) => {
+    console.log('🔐 Auth check:', {
+        hasSession: !!req.session,
+        sessionID: req.sessionID,
+        adminId: req.session?.adminId,
+        role: req.session?.role,
+        companyId: req.session?.companyId,
+        cookie: req.headers.cookie ? 'present' : 'missing'
+    });
+
     if (req.session && req.session.adminId) {
         // Add company ID to request for filtering
         req.adminCompanyId = req.session.companyId;
         req.adminRole = req.session.role;
-        console.log('🔑 Admin authenticated:', {
+        console.log('✅ Admin authenticated:', {
             adminId: req.session.adminId,
             role: req.adminRole,
             companyId: req.adminCompanyId
@@ -15,6 +24,7 @@ const requireAuth = (req, res, next) => {
         return next();
     }
 
+    console.log('❌ Auth failed - no session or adminId');
     return res.status(401).json({
         error: 'Unauthorized',
         message: 'Please log in to access this resource'

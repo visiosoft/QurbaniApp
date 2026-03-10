@@ -7,12 +7,31 @@ require('dotenv').config();
 
 const app = express();
 
+// Trust proxy - required for secure cookies behind reverse proxy
+app.set('trust proxy', 1);
+
 // Connect to MongoDB
 connectDB();
 
+// CORS configuration
+const allowedOrigins = [
+    'http://localhost:3000',
+    'http://localhost:3001',
+    'https://hajjmanagement.netlify.app',
+    process.env.FRONTEND_URL
+].filter(Boolean);
+
 // Middleware
 app.use(cors({
-    origin: true, // Allow all origins (for mobile app development)
+    origin: function (origin, callback) {
+        // Allow requests with no origin (like mobile apps or Postman)
+        if (!origin) return callback(null, true);
+        if (allowedOrigins.includes(origin)) {
+            callback(null, true);
+        } else {
+            callback(null, true); // Allow all for now
+        }
+    },
     credentials: true
 }));
 app.use(express.json());
@@ -30,7 +49,9 @@ app.use(session({
     cookie: {
         maxAge: 1000 * 60 * 60 * 24, // 24 hours
         httpOnly: true,
-        secure: process.env.NODE_ENV === 'production'
+        secure: process.env.NODE_ENV === 'production', // true in production (HTTPS)
+        sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax', // 'none' for cross-domain in production
+        domain: process.env.NODE_ENV === 'production' ? undefined : undefined // Let browser handle domain
     }
 }));
 
