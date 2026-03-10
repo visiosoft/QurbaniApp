@@ -26,8 +26,15 @@ api.interceptors.response.use(
     (response) => response,
     (error) => {
         if (error.response?.status === 401) {
-            // Redirect to login if unauthorized
-            window.location.href = '/login';
+            // Only redirect to login if we're not already on login page
+            // and if it's not the initial auth check
+            const isLoginPage = window.location.pathname === '/login';
+            const isAuthCheck = error.config?.url?.includes('/auth/check');
+            
+            if (!isLoginPage && !isAuthCheck) {
+                console.log('Unauthorized - redirecting to login');
+                window.location.href = '/login';
+            }
         }
         return Promise.reject(error);
     }

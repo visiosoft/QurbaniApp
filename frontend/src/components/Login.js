@@ -25,9 +25,12 @@ const Login = ({ setIsAuthenticated, setAdminRole, setAdminInfo }) => {
         setLoading(true);
 
         try {
+            console.log('🔐 Attempting login...');
             const response = await authAPI.login(credentials);
+            console.log('✅ Login response:', response.data);
 
             if (response.data.success) {
+                console.log('✅ Login successful, setting auth state');
                 setIsAuthenticated(true);
                 if (response.data.admin) {
                     if (setAdminRole) {
@@ -37,10 +40,16 @@ const Login = ({ setIsAuthenticated, setAdminRole, setAdminInfo }) => {
                         setAdminInfo(response.data.admin);
                     }
                     localStorage.setItem('admin', JSON.stringify(response.data.admin));
+                    console.log('✅ Admin info stored:', response.data.admin.role);
                 }
+                
+                // Small delay to ensure session is set
+                await new Promise(resolve => setTimeout(resolve, 100));
+                console.log('🚀 Navigating to dashboard...');
                 navigate('/dashboard');
             }
         } catch (err) {
+            console.error('❌ Login error:', err);
             setError(err.response?.data?.message || 'Login failed. Please try again.');
         } finally {
             setLoading(false);

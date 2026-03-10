@@ -87,6 +87,29 @@ app.get('/api/config-check', (req, res) => {
     });
 });
 
+// Session debug endpoint (check if session exists)
+app.get('/api/session-debug', (req, res) => {
+    res.json({
+        hasSession: !!req.session,
+        sessionID: req.sessionID,
+        hasAdminId: !!req.session?.adminId,
+        adminRole: req.session?.role,
+        companyId: req.session?.companyId,
+        cookie: {
+            originalMaxAge: req.session?.cookie?.originalMaxAge,
+            expires: req.session?.cookie?.expires,
+            secure: req.session?.cookie?.secure,
+            httpOnly: req.session?.cookie?.httpOnly,
+            sameSite: req.session?.cookie?.sameSite
+        },
+        headers: {
+            origin: req.headers.origin,
+            referer: req.headers.referer,
+            cookie: req.headers.cookie ? 'present (not shown for security)' : 'missing'
+        }
+    });
+});
+
 // Error handling middleware
 app.use((err, req, res, next) => {
     console.error(err.stack);
