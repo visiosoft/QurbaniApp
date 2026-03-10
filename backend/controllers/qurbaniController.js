@@ -37,7 +37,7 @@ const getAllQurbani = async (req, res) => {
 
         // Filter by company
         let filterCompanyId = null;
-        
+
         if (req.adminRole === 'company_admin') {
             // Company admin always filters by their company
             filterCompanyId = req.adminCompanyId;
@@ -122,13 +122,13 @@ const getAllQurbani = async (req, res) => {
 const getQurbaniStats = async (req, res) => {
     try {
         const { companyId } = req.query;
-        
+
         // Build base query for company filtering
         let baseQuery = {};
-        
+
         // Filter by company
         let filterCompanyId = null;
-        
+
         if (req.adminRole === 'company_admin') {
             // Company admin always filters by their company
             filterCompanyId = req.adminCompanyId;

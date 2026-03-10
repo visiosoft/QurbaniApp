@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { qurbaniAPI } from '../services/api';
+import { qurbaniAPI, companiesAPI } from '../services/api';
 import '../styles/QurbaniList.css';
 
-const QurbaniList = () => {
+const QurbaniList = ({ adminRole, adminInfo }) => {
     const [qurbaniList, setQurbaniList] = useState([]);
+    const [companies, setCompanies] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
     const [pagination, setPagination] = useState({
@@ -15,10 +16,24 @@ const QurbaniList = () => {
         qurbaniType: '',
         status: '',
         accountType: '',
+        companyId: '',
         page: 1,
         limit: 10
     });
     const [searchInput, setSearchInput] = useState('');
+
+    const isSuperAdmin = adminRole === 'super_admin';
+
+    // Fetch companies for super admin
+    const fetchCompanies = async () => {
+        if (!isSuperAdmin) return;
+        try {
+            const response = await companiesAPI.getAll();
+            setCompanies(response.data.companies || []);
+        } catch (err) {
+            console.error('Failed to load companies:', err);
+        }
+    };
 
     // Debounced search
     useEffect(() => {
@@ -29,8 +44,12 @@ const QurbaniList = () => {
     }, [searchInput]);
 
     useEffect(() => {
+        fetchCompanies();
+    }, []);
+
+    useEffect(() => {
         fetchQurbani();
-    }, [filters.qurbaniType, filters.status, filters.accountType, filters.search, filters.page]);
+    }, [filters.qurbaniType, filters.status, filters.accountType, filters.companyId, filters.search, filters.page]);
 
     const fetchQurbani = async () => {
         try {
@@ -67,6 +86,7 @@ const QurbaniList = () => {
             status: '',
             accountType: '',
             search: '',
+            companyId: '',
             page: 1,
             limit: 10
         });
@@ -83,6 +103,7 @@ const QurbaniList = () => {
         if (filters.status) count++;
         if (filters.accountType) count++;
         if (filters.search) count++;
+        if (filters.companyId) count++;
         return count;
     };
 
@@ -180,6 +201,17 @@ const QurbaniList = () => {
                         className="search-input"
                     />
 
+                    {isSuperAdmin && (
+                        <select name="companyId" value={filters.companyId} onChange={handleFilterChange}>
+                            <option value="">All Companies</option>
+                            {companies.map(company => (
+                                <option key={company._id} value={company._id}>
+                                    {company.companyName}
+                                </option>
+                            ))}
+                        </select>
+                    )}
+
                     <select name="accountType" value={filters.accountType} onChange={handleFilterChange}>
                         <option value="">All Account Types</option>
                         <option value="individual">Individual</option>
@@ -219,6 +251,7 @@ const QurbaniList = () => {
                                 <th>Type</th>
                                 <th>Account</th>
                                 <th>Details</th>
+                                {isSuperAdmin && <th>Company</th>}
                                 <th>Status</th>
                                 <th>Created</th>
                                 <th>Completed</th>
@@ -228,7 +261,7 @@ const QurbaniList = () => {
                         <tbody>
                             {qurbaniList.length === 0 ? (
                                 <tr>
-                                    <td colSpan="7" className="no-data">No Qurbani requests found</td>
+                                    <td colSpan={isSuperAdmin ? "8" : "7"} className="no-data">No Qurbani requests found</td>
                                 </tr>
                             ) : (
                                 qurbaniList.map((qurbani) => (
@@ -259,6 +292,21 @@ const QurbaniList = () => {
                                                 'N/A'
                                             )}
                                         </td>
+                                        {isSuperAdmin && (
+                                            <td>
+                                                {qurbani.userId?.companyId ? (
+                                                    <span className="company-badge">
+                                                        {qurbani.userId.companyId.companyName}
+                                                    </span>
+                                                ) : qurbani.groupId?.members?.[0]?.companyId ? (
+                                                    <span className="company-badge">
+                                                        {qurbani.groupId.members[0].companyId.companyName}
+                                                    </span>
+                                                ) : (
+                                                    'N/A'
+                                                )}
+                                            </td>
+                                        )}
                                         <td>
                                             <select
                                                 className={`status-select ${qurbani.status}`}

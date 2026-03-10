@@ -17,7 +17,7 @@ const getAllUsers = async (req, res) => {
 
         // Build query with company isolation
         const query = {};
-        
+
         // Super admin can filter by company or see all
         if (req.adminRole === 'super_admin') {
             if (companyId) {
@@ -69,12 +69,12 @@ const getAllUsers = async (req, res) => {
 const getUserById = async (req, res) => {
     try {
         const query = { _id: req.params.id };
-        
+
         // Company admin can only view users from their company
         if (req.adminRole !== 'super_admin') {
             query.companyId = req.adminCompanyId;
         }
-        
+
         const user = await User.findOne(query)
             .populate('groupId', 'groupName qurbaniType members')
             .populate('companyId', 'companyName companyCode');

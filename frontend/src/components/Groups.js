@@ -24,7 +24,7 @@ const Groups = ({ adminRole, adminInfo }) => {
         page: 1,
         limit: 10
     });
-    
+
     const isSuperAdmin = adminRole === 'super_admin';
 
     // Fetch companies for super admin

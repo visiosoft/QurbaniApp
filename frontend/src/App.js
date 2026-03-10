@@ -65,8 +65,8 @@ function App() {
                             element={
                                 isAuthenticated ?
                                     <Navigate to="/dashboard" /> :
-                                    <Login 
-                                        setIsAuthenticated={setIsAuthenticated} 
+                                    <Login
+                                        setIsAuthenticated={setIsAuthenticated}
                                         setAdminRole={setAdminRole}
                                         setAdminInfo={setAdminInfo}
                                     />
