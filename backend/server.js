@@ -23,6 +23,22 @@ app.use(cors({
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+// Log all responses to see Set-Cookie headers
+app.use((req, res, next) => {
+    const originalEnd = res.end;
+    res.end = function(...args) {
+        if (req.path === '/api/auth/login' || req.path.includes('auth')) {
+            const setCookie = res.getHeader('Set-Cookie');
+            console.log(`📤 Response for ${req.path}:`, {
+                setCookie: setCookie || 'NONE',
+                statusCode: res.statusCode
+            });
+        }
+        originalEnd.apply(res, args);
+    };
+    next();
+});
+
 // Session configuration
 app.use(session({
     secret: process.env.SESSION_SECRET || 'qurbani-secret-key-2026',
@@ -37,7 +53,8 @@ app.use(session({
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production', // true in production (HTTPS)
         sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax', // 'none' for cross-domain in production
-        domain: process.env.NODE_ENV === 'production' ? undefined : undefined // Let browser handle domain
+        domain: undefined, // Let browser handle domain
+        path: '/' // Explicitly set path
     }
 }));
 
@@ -93,6 +110,39 @@ app.get('/api/session-debug', (req, res) => {
             referer: req.headers.referer,
             cookie: req.headers.cookie ? 'present (not shown for security)' : 'missing'
         }
+    });
+});
+
+// Test cookie endpoint - force set a session value
+app.get('/api/test-cookie', (req, res) => {
+    req.session.testValue = 'cookie-test-' + Date.now();
+    req.session.save((err) => {
+        if (err) {
+            return res.status(500).json({ error: 'Session save failed', details: err.message });
+        }
+        res.json({ 
+            message: 'Session value set',
+            sessionID: req.sessionID,
+            testValue: req.session.testValue,
+            cookieConfig: {
+                secure: req.session.cookie.secure,
+                sameSite: req.session.cookie.sameSite,
+                httpOnly: req.session.cookie.httpOnly,
+                domain: req.session.cookie.domain
+            }
+        });
+    });
+});
+
+// Verify cookie endpoint - check if cookie is being sent back
+app.get('/api/verify-cookie', (req, res) => {
+    res.json({
+        hasCookieHeader: !!req.headers.cookie,
+        cookieHeader: req.headers.cookie || 'NONE',
+        sessionID: req.sessionID,
+        hasSession: !!req.session,
+        testValue: req.session?.testValue || 'NOT SET',
+        message: req.session?.testValue ? 'Cookie is working!' : 'Cookie not persisting'
     });
 });
 
