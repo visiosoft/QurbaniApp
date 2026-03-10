@@ -113,7 +113,7 @@ const login = async (req, res) => {
             });
 
             // Force session save before responding
-            req.session.save((err) => {
+            return req.session.save((err) => {
                 if (err) {
                     console.error('❌ Session save error:', err);
                     return res.status(500).json({
@@ -174,22 +174,40 @@ const login = async (req, res) => {
         req.session.userType = 'user';
         req.session.passportNumber = user.passportNumber;
 
-        // Return user data (excluding sensitive information)
-        return res.json({
-            success: true,
-            message: 'User login successful',
-            userType: 'user',
-            user: {
-                id: user._id,
-                name: user.name,
-                passportNumber: user.passportNumber,
-                phoneNumber: user.phoneNumber,
-                qurbaniType: user.qurbaniType,
-                accountType: user.accountType,
-                status: user.status,
-                groupId: user.groupId,
-                createdAt: user.createdAt
+        console.log('🔐 User login successful, session set:', {
+            sessionID: req.sessionID,
+            userId: req.session.userId
+        });
+
+        // Force session save before responding
+        return req.session.save((err) => {
+            if (err) {
+                console.error('❌ Session save error:', err);
+                return res.status(500).json({
+                    error: 'Session error',
+                    message: 'Failed to create session'
+                });
             }
+
+            console.log('✅ Session saved successfully');
+
+            // Return user data (excluding sensitive information)
+            return res.json({
+                success: true,
+                message: 'User login successful',
+                userType: 'user',
+                user: {
+                    id: user._id,
+                    name: user.name,
+                    passportNumber: user.passportNumber,
+                    phoneNumber: user.phoneNumber,
+                    qurbaniType: user.qurbaniType,
+                    accountType: user.accountType,
+                    status: user.status,
+                    groupId: user.groupId,
+                    createdAt: user.createdAt
+                }
+            });
         });
 
     } catch (error) {
