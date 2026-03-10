@@ -70,6 +70,23 @@ app.get('/api/health', (req, res) => {
     res.json({ status: 'OK', message: 'Qurbani Management API is running' });
 });
 
+// Configuration check endpoint (for debugging deployment issues)
+app.get('/api/config-check', (req, res) => {
+    res.json({
+        nodeEnv: process.env.NODE_ENV || 'not set',
+        sessionConfigured: {
+            secure: process.env.NODE_ENV === 'production',
+            sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
+            httpOnly: true,
+            maxAge: '24 hours'
+        },
+        corsOrigins: allowedOrigins,
+        frontendUrl: process.env.FRONTEND_URL || 'not set',
+        trustProxy: app.get('trust proxy'),
+        timestamp: new Date().toISOString()
+    });
+});
+
 // Error handling middleware
 app.use((err, req, res, next) => {
     console.error(err.stack);
