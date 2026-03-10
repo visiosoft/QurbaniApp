@@ -8,6 +8,7 @@
   # Set Node version
   [build.environment]
     NODE_VERSION = "18"
+    DISABLE_ESLINT_PLUGIN = "true"
 
 # Redirect rules for SPA (Single Page Application)
 [[redirects]]

@@ -290,7 +290,7 @@ const authenticateUser = async (req, res) => {
         // Find user by phone number
         const user = await User.findOne({
             phoneNumber: phoneNumber.trim()
-        }).populate('groupId');
+        }).populate('groupId').populate('companyId', 'companyName companyCode');
 
         if (!user) {
             return res.status(401).json({
@@ -346,6 +346,7 @@ const authenticateUser = async (req, res) => {
                 accountType: user.accountType,
                 status: user.status,
                 groupId: user.groupId,
+                companyId: user.companyId,
                 createdAt: user.createdAt
             },
             qurbani: qurbani ? {
@@ -429,8 +430,8 @@ const getUserProfile = async (req, res) => {
             });
         }
 
-        // Fetch fresh user data with groupId populated
-        const freshUser = await User.findById(user._id).populate('groupId');
+        // Fetch fresh user data with groupId and companyId populated
+        const freshUser = await User.findById(user._id).populate('groupId').populate('companyId', 'companyName companyCode');
 
         if (!freshUser) {
             return res.status(404).json({
