@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { qurbaniAPI } from '../services/api';
 import '../styles/Dashboard.css';
 
-const Dashboard = () => {
+const Dashboard = ({ adminInfo }) => {
     const [stats, setStats] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
@@ -35,6 +35,16 @@ const Dashboard = () => {
         <div className="dashboard">
             <div className="dashboard-header">
                 <h1>Dashboard</h1>
+                <div className="admin-info">
+                    {adminInfo?.company && (
+                        <p className="company-name">
+                            🏢 {adminInfo.role === 'super_admin' ? 'All Companies' : adminInfo.company.name}
+                        </p>
+                    )}
+                    {adminInfo?.fullName && (
+                        <p className="admin-name">👤 {adminInfo.fullName}</p>
+                    )}
+                </div>
                 <p>Qurbani Management System Overview</p>
             </div>
 

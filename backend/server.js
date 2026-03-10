@@ -37,6 +37,7 @@ app.use(session({
 // Routes
 app.use('/api/auth', require('./routes/auth'));
 app.use('/api/companies', require('./routes/companies'));
+app.use('/api/user', require('./routes/user')); // User profile operations
 app.use('/api/users', require('./routes/users'));
 app.use('/api/groups', require('./routes/groups')); // Admin group management
 app.use('/api/group', require('./routes/group')); // Mobile group operations

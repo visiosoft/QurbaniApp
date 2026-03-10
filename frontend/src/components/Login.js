@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { authAPI } from '../services/api';
 import '../styles/Login.css';
 
-const Login = ({ setIsAuthenticated }) => {
+const Login = ({ setIsAuthenticated, setAdminRole, setAdminInfo }) => {
     const [credentials, setCredentials] = useState({
         username: '',
         password: '',
@@ -29,7 +29,15 @@ const Login = ({ setIsAuthenticated }) => {
 
             if (response.data.success) {
                 setIsAuthenticated(true);
-                localStorage.setItem('admin', JSON.stringify(response.data.admin));
+                if (response.data.admin) {
+                    if (setAdminRole) {
+                        setAdminRole(response.data.admin.role);
+                    }
+                    if (setAdminInfo) {
+                        setAdminInfo(response.data.admin);
+                    }
+                    localStorage.setItem('admin', JSON.stringify(response.data.admin));
+                }
                 navigate('/dashboard');
             }
         } catch (err) {

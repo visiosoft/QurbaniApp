@@ -10,13 +10,23 @@ const getAllGroups = async (req, res) => {
             limit = 10,
             status,
             qurbaniType,
-            search
+            search,
+            companyId
         } = req.query;
 
         // Build query with company isolation
-        const query = {
-            companyId: req.adminCompanyId // Filter by logged-in admin's company
-        };
+        const query = {};
+        
+        // Super admin can filter by company or see all
+        if (req.adminRole === 'super_admin') {
+            if (companyId) {
+                query.companyId = companyId;
+            }
+            // If no companyId filter, super admin sees all companies
+        } else {
+            // Company admin only sees their company's groups
+            query.companyId = req.adminCompanyId;
+        }
 
         if (status) query.status = status;
         if (qurbaniType) query.qurbaniType = qurbaniType;
@@ -53,10 +63,14 @@ const getAllGroups = async (req, res) => {
 // Get single group by ID
 const getGroupById = async (req, res) => {
     try {
-        const group = await Group.findOne({
-            _id: req.params.id,
-            companyId: req.adminCompanyId // Ensure group belongs to admin's company
-        })
+        const query = { _id: req.params.id };
+        
+        // Company admin can only view groups from their company
+        if (req.adminRole !== 'super_admin') {
+            query.companyId = req.adminCompanyId;
+        }
+        
+        const group = await Group.findOne(query)
             .populate('representative', 'name passportNumber phoneNumber')
             .populate('members', 'name passportNumber phoneNumber qurbaniType')
             .populate('companyId', 'companyName companyCode');

@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { groupsAPI, usersAPI } from '../services/api';
+import { groupsAPI, usersAPI, companiesAPI } from '../services/api';
 import './Modal.css';
 import '../styles/Groups.css';
 
-const Groups = () => {
+const Groups = ({ adminRole, adminInfo }) => {
     const [groups, setGroups] = useState([]);
+    const [companies, setCompanies] = useState([]);
     const [users, setUsers] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
@@ -19,9 +20,23 @@ const Groups = () => {
         status: '',
         qurbaniType: '',
         search: '',
+        companyId: '',
         page: 1,
         limit: 10
     });
+    
+    const isSuperAdmin = adminRole === 'super_admin';
+
+    // Fetch companies for super admin
+    const fetchCompanies = async () => {
+        if (!isSuperAdmin) return;
+        try {
+            const response = await companiesAPI.getAll();
+            setCompanies(response.data.companies || []);
+        } catch (err) {
+            console.error('Failed to load companies:', err);
+        }
+    };
     const [searchInput, setSearchInput] = useState('');
     const [formData, setFormData] = useState({
         groupName: '',
@@ -78,9 +93,13 @@ const Groups = () => {
     }, [searchInput]);
 
     useEffect(() => {
+        fetchCompanies();
+    }, []);
+
+    useEffect(() => {
         fetchGroups();
         fetchAvailableUsers();
-    }, [filters.status, filters.qurbaniType, filters.search, filters.page]);
+    }, [filters.status, filters.qurbaniType, filters.search, filters.companyId, filters.page]);
 
     const fetchGroups = async () => {
         try {
@@ -126,6 +145,7 @@ const Groups = () => {
             status: '',
             qurbaniType: '',
             search: '',
+            companyId: '',
             page: 1,
             limit: 10
         });
@@ -141,6 +161,7 @@ const Groups = () => {
         if (filters.status) count++;
         if (filters.qurbaniType) count++;
         if (filters.search) count++;
+        if (filters.companyId) count++;
         return count;
     };
 
@@ -307,6 +328,17 @@ const Groups = () => {
                         className="search-input"
                     />
 
+                    {isSuperAdmin && (
+                        <select name="companyId" value={filters.companyId} onChange={handleFilterChange}>
+                            <option value="">All Companies</option>
+                            {companies.map(company => (
+                                <option key={company._id} value={company._id}>
+                                    {company.companyName}
+                                </option>
+                            ))}
+                        </select>
+                    )}
+
                     <select name="status" value={filters.status} onChange={handleFilterChange}>
                         <option value="">All Status</option>
                         <option value="pending">Pending</option>
@@ -355,6 +387,9 @@ const Groups = () => {
                                 </div>
 
                                 <div className="group-info">
+                                    {isSuperAdmin && group.companyId && (
+                                        <p><strong>Company:</strong> <span className="company-badge">{group.companyId.companyName}</span></p>
+                                    )}
                                     <p><strong>Type:</strong> {group.qurbaniType}</p>
                                     <p><strong>Members:</strong> {group.members.length} / {getMemberLimit(group.qurbaniType)}</p>
                                     <p><strong>Representative:</strong> {group.representative?.name}</p>

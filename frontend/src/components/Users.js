@@ -1,12 +1,14 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { usersAPI } from '../services/api';
+import { usersAPI, companiesAPI } from '../services/api';
 import '../styles/Users.css';
 
-const Users = () => {
+const Users = ({ adminRole, adminInfo }) => {
     const [users, setUsers] = useState([]);
+    const [companies, setCompanies] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
     const [showForm, setShowForm] = useState(false);
+    const [editingUser, setEditingUser] = useState(null);
     const [pagination, setPagination] = useState({
         currentPage: 1,
         totalPages: 1,
@@ -16,6 +18,7 @@ const Users = () => {
         accountType: '',
         status: '',
         qurbaniType: '',
+        companyId: '',
         search: '',
         page: 1,
         limit: 10
@@ -26,7 +29,10 @@ const Users = () => {
         passportNumber: '',
         phoneNumber: '',
         qurbaniType: 'Sheep',
+        status: 'pending',
     });
+
+    const isSuperAdmin = adminRole === 'super_admin';
 
     // Debounced search
     useEffect(() => {
@@ -36,9 +42,25 @@ const Users = () => {
         return () => clearTimeout(timer);
     }, [searchInput]);
 
+    // Fetch companies for super admin
+    useEffect(() => {
+        if (isSuperAdmin) {
+            fetchCompanies();
+        }
+    }, [isSuperAdmin]);
+
     useEffect(() => {
         fetchUsers();
-    }, [filters.accountType, filters.status, filters.qurbaniType, filters.search, filters.page]);
+    }, [filters.accountType, filters.status, filters.qurbaniType, filters.companyId, filters.search, filters.page]);
+
+    const fetchCompanies = async () => {
+        try {
+            const response = await companiesAPI.getAll();
+            setCompanies(response.data.companies || []);
+        } catch (err) {
+            console.error('Failed to load companies:', err);
+        }
+    };
 
     const fetchUsers = async () => {
         try {
@@ -101,22 +123,54 @@ const Users = () => {
         });
     };
 
+    const handleEdit = (user) => {
+        setEditingUser(user);
+        setFormData({
+            name: user.name,
+            passportNumber: user.passportNumber,
+            phoneNumber: user.phoneNumber,
+            qurbaniType: user.qurbaniType,
+            status: user.status,
+        });
+        setShowForm(true);
+    };
+
+    const handleCancelEdit = () => {
+        setEditingUser(null);
+        setShowForm(false);
+        setFormData({
+            name: '',
+            passportNumber: '',
+            phoneNumber: '',
+            qurbaniType: 'Sheep',
+            status: 'pending',
+        });
+    };
+
     const handleSubmit = async (e) => {
         e.preventDefault();
 
         try {
-            await usersAPI.create(formData);
+            if (editingUser) {
+                await usersAPI.update(editingUser._id, formData);
+                alert('User updated successfully!');
+            } else {
+                await usersAPI.create(formData);
+                alert('User created successfully!');
+            }
+
             setShowForm(false);
+            setEditingUser(null);
             setFormData({
                 name: '',
                 passportNumber: '',
                 phoneNumber: '',
                 qurbaniType: 'Sheep',
+                status: 'pending',
             });
             fetchUsers();
-            alert('User created successfully!');
         } catch (err) {
-            alert(err.response?.data?.message || 'Failed to create user');
+            alert(err.response?.data?.message || `Failed to ${editingUser ? 'update' : 'create'} user`);
         }
     };
 
@@ -138,16 +192,22 @@ const Users = () => {
                 <h1>Users Management</h1>
                 <button
                     className="add-button"
-                    onClick={() => setShowForm(!showForm)}
+                    onClick={() => {
+                        if (showForm) {
+                            handleCancelEdit();
+                        } else {
+                            setShowForm(true);
+                        }
+                    }}
                 >
                     {showForm ? 'Cancel' : '+ Add Individual User'}
                 </button>
             </div>
 
-            {/* Add User Form */}
+            {/* Add/Edit User Form */}
             {showForm && (
                 <div className="form-container">
-                    <h2>Create Individual User</h2>
+                    <h2>{editingUser ? 'Edit User' : 'Create Individual User'}</h2>
                     <form onSubmit={handleSubmit} className="user-form">
                         <div className="form-row">
                             <div className="form-group">
@@ -201,10 +261,28 @@ const Users = () => {
                             </div>
                         </div>
 
+                        {editingUser && (
+                            <div className="form-row">
+                                <div className="form-group">
+                                    <label>Status *</label>
+                                    <select
+                                        name="status"
+                                        value={formData.status}
+                                        onChange={handleFormChange}
+                                        required
+                                    >
+                                        <option value="pending">Pending</option>
+                                        <option value="ready">Ready</option>
+                                        <option value="done">Done</option>
+                                    </select>
+                                </div>
+                            </div>
+                        )}
+
                         {/* Password field removed for individual user */}
 
                         <button type="submit" className="submit-button">
-                            Create User
+                            {editingUser ? 'Update User' : 'Create User'}
                         </button>
                     </form>
                 </div>
@@ -247,6 +325,17 @@ const Users = () => {
                         <option value="">All Types</option>
                         <option value="Sheep">Sheep</option>
                     </select>
+
+                    {isSuperAdmin && (
+                        <select name="companyId" value={filters.companyId} onChange={handleFilterChange}>
+                            <option value="">All Companies</option>
+                            {companies.map(company => (
+                                <option key={company._id} value={company._id}>
+                                    {company.companyName}
+                                </option>
+                            ))}
+                        </select>
+                    )}
                 </div>
 
                 {/* Results Summary */}
@@ -269,6 +358,7 @@ const Users = () => {
                                 <th>Name</th>
                                 <th>Passport</th>
                                 <th>Phone</th>
+                                {isSuperAdmin && <th>Company</th>}
                                 <th>Type</th>
                                 <th>Account</th>
                                 <th>Status</th>
@@ -278,7 +368,7 @@ const Users = () => {
                         <tbody>
                             {users.length === 0 ? (
                                 <tr>
-                                    <td colSpan="7" className="no-data">No users found</td>
+                                    <td colSpan={isSuperAdmin ? "8" : "7"} className="no-data">No users found</td>
                                 </tr>
                             ) : (
                                 users.map((user) => (
@@ -286,6 +376,13 @@ const Users = () => {
                                         <td>{user.name}</td>
                                         <td>{user.passportNumber}</td>
                                         <td>{user.phoneNumber}</td>
+                                        {isSuperAdmin && (
+                                            <td>
+                                                <span className="company-badge">
+                                                    {user.companyId?.companyName || 'N/A'}
+                                                </span>
+                                            </td>
+                                        )}
                                         <td>{user.qurbaniType}</td>
                                         <td>
                                             <span className={`badge ${user.accountType}`}>
@@ -298,6 +395,12 @@ const Users = () => {
                                             </span>
                                         </td>
                                         <td>
+                                            <button
+                                                className="edit-btn"
+                                                onClick={() => handleEdit(user)}
+                                            >
+                                                Edit
+                                            </button>
                                             <button
                                                 className="delete-btn"
                                                 onClick={() => handleDelete(user._id)}

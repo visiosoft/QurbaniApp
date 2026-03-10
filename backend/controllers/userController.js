@@ -11,13 +11,23 @@ const getAllUsers = async (req, res) => {
             accountType,
             status,
             qurbaniType,
-            search
+            search,
+            companyId
         } = req.query;
 
         // Build query with company isolation
-        const query = {
-            companyId: req.adminCompanyId // Filter by logged-in admin's company
-        };
+        const query = {};
+        
+        // Super admin can filter by company or see all
+        if (req.adminRole === 'super_admin') {
+            if (companyId) {
+                query.companyId = companyId;
+            }
+            // If no companyId filter, super admin sees all companies
+        } else {
+            // Company admin only sees their company's users
+            query.companyId = req.adminCompanyId;
+        }
 
         if (accountType) query.accountType = accountType;
         if (status) query.status = status;
@@ -58,10 +68,14 @@ const getAllUsers = async (req, res) => {
 // Get single user by ID
 const getUserById = async (req, res) => {
     try {
-        const user = await User.findOne({
-            _id: req.params.id,
-            companyId: req.adminCompanyId // Ensure user belongs to admin's company
-        })
+        const query = { _id: req.params.id };
+        
+        // Company admin can only view users from their company
+        if (req.adminRole !== 'super_admin') {
+            query.companyId = req.adminCompanyId;
+        }
+        
+        const user = await User.findOne(query)
             .populate('groupId', 'groupName qurbaniType members')
             .populate('companyId', 'companyName companyCode');
 
@@ -236,10 +250,95 @@ const deleteUser = async (req, res) => {
     }
 };
 
+// Get current user's profile (for mobile users)
+const getProfile = async (req, res) => {
+    try {
+        const user = await User.findById(req.userId)
+            .populate('groupId', 'groupName qurbaniType members')
+            .populate('companyId', 'companyName companyCode')
+            .select('-password');
+
+        if (!user) {
+            return res.status(404).json({
+                error: 'Not found',
+                message: 'User not found'
+            });
+        }
+
+        res.json(user);
+
+    } catch (error) {
+        console.error('Get profile error:', error);
+        res.status(500).json({
+            error: 'Server error',
+            message: error.message
+        });
+    }
+};
+
+// Update current user's profile (for mobile users)
+const updateProfile = async (req, res) => {
+    try {
+        const { phoneNumber } = req.body;
+
+        if (!phoneNumber) {
+            return res.status(400).json({
+                error: 'Validation failed',
+                message: 'Phone number is required'
+            });
+        }
+
+        const user = await User.findById(req.userId);
+
+        if (!user) {
+            return res.status(404).json({
+                error: 'Not found',
+                message: 'User not found'
+            });
+        }
+
+        // Check if phone number is already used by another user
+        if (phoneNumber !== user.phoneNumber) {
+            const existingUser = await User.findOne({
+                phoneNumber,
+                _id: { $ne: req.userId } // Exclude current user
+            });
+
+            if (existingUser) {
+                return res.status(400).json({
+                    error: 'Duplicate entry',
+                    message: 'This phone number is already registered to another user'
+                });
+            }
+        }
+
+        // Update phone number
+        user.phoneNumber = phoneNumber;
+        await user.save();
+
+        // Return updated user without password
+        const updatedUser = await User.findById(req.userId)
+            .populate('groupId', 'groupName qurbaniType members')
+            .populate('companyId', 'companyName companyCode')
+            .select('-password');
+
+        res.json(updatedUser);
+
+    } catch (error) {
+        console.error('Update profile error:', error);
+        res.status(500).json({
+            error: 'Server error',
+            message: error.message
+        });
+    }
+};
+
 module.exports = {
     getAllUsers,
     getUserById,
     createUser,
     updateUser,
-    deleteUser
+    deleteUser,
+    getProfile,
+    updateProfile
 };

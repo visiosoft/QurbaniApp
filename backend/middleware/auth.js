@@ -7,6 +7,11 @@ const requireAuth = (req, res, next) => {
         // Add company ID to request for filtering
         req.adminCompanyId = req.session.companyId;
         req.adminRole = req.session.role;
+        console.log('🔑 Admin authenticated:', {
+            adminId: req.session.adminId,
+            role: req.adminRole,
+            companyId: req.adminCompanyId
+        });
         return next();
     }
 

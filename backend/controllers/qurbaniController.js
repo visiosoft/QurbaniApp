@@ -24,7 +24,8 @@ const getAllQurbani = async (req, res) => {
             qurbaniType,
             status,
             accountType,
-            search
+            search,
+            companyId
         } = req.query;
 
         // Build query
@@ -34,15 +35,41 @@ const getAllQurbani = async (req, res) => {
         if (status) query.status = status;
         if (accountType) query.accountType = accountType;
 
+        // Filter by company
+        let filterCompanyId = null;
+        
+        if (req.adminRole === 'company_admin') {
+            // Company admin always filters by their company
+            filterCompanyId = req.adminCompanyId;
+            console.log('🏢 Company Admin detected - filtering by company:', filterCompanyId);
+        } else if (req.adminRole === 'super_admin' && companyId) {
+            // Super admin can filter by specific company
+            filterCompanyId = companyId;
+            console.log('👑 Super Admin - filtering by company:', filterCompanyId);
+        } else {
+            console.log('👑 Super Admin - showing all requests');
+        }
+
+        // Apply company filter if needed
+        if (filterCompanyId) {
+            const companyUsers = await User.find({ companyId: filterCompanyId }).select('_id');
+            const userIds = companyUsers.map(u => u._id);
+            console.log('👥 Found', userIds.length, 'users in this company');
+            query.userId = { $in: userIds };
+        }
+
         // Populate first to enable searching in populated fields
         let qurbaniQuery = Qurbani.find(query)
-            .populate('userId', 'name passportNumber phoneNumber')
+            .populate({
+                path: 'userId',
+                select: 'name passportNumber phoneNumber companyId'
+            })
             .populate({
                 path: 'groupId',
                 select: 'groupName qurbaniType members',
                 populate: {
                     path: 'members',
-                    select: 'name passportNumber phoneNumber'
+                    select: 'name passportNumber phoneNumber companyId'
                 }
             });
 
@@ -94,7 +121,31 @@ const getAllQurbani = async (req, res) => {
 // Get Qurbani statistics
 const getQurbaniStats = async (req, res) => {
     try {
+        const { companyId } = req.query;
+        
+        // Build base query for company filtering
+        let baseQuery = {};
+        
+        // Filter by company
+        let filterCompanyId = null;
+        
+        if (req.adminRole === 'company_admin') {
+            // Company admin always filters by their company
+            filterCompanyId = req.adminCompanyId;
+        } else if (req.adminRole === 'super_admin' && companyId) {
+            // Super admin can filter by specific company
+            filterCompanyId = companyId;
+        }
+
+        // Apply company filter if needed
+        if (filterCompanyId) {
+            const companyUsers = await User.find({ companyId: filterCompanyId }).select('_id');
+            const userIds = companyUsers.map(u => u._id);
+            baseQuery.userId = { $in: userIds };
+        }
+
         const stats = await Qurbani.aggregate([
+            { $match: baseQuery },
             {
                 $group: {
                     _id: {
@@ -107,15 +158,15 @@ const getQurbaniStats = async (req, res) => {
             }
         ]);
 
-        const totalPending = await Qurbani.countDocuments({ status: 'pending' });
-        const totalReady = await Qurbani.countDocuments({ status: 'ready' });
-        const totalDone = await Qurbani.countDocuments({ status: 'done' });
-        const totalIndividual = await Qurbani.countDocuments({ accountType: 'individual' });
-        const totalGroup = await Qurbani.countDocuments({ accountType: 'group' });
+        const totalPending = await Qurbani.countDocuments({ ...baseQuery, status: 'pending' });
+        const totalReady = await Qurbani.countDocuments({ ...baseQuery, status: 'ready' });
+        const totalDone = await Qurbani.countDocuments({ ...baseQuery, status: 'done' });
+        const totalIndividual = await Qurbani.countDocuments({ ...baseQuery, accountType: 'individual' });
+        const totalGroup = await Qurbani.countDocuments({ ...baseQuery, accountType: 'group' });
 
-        const bySheep = await Qurbani.countDocuments({ qurbaniType: 'Sheep' });
-        const byCow = await Qurbani.countDocuments({ qurbaniType: 'Cow' });
-        const byCamel = await Qurbani.countDocuments({ qurbaniType: 'Camel' });
+        const bySheep = await Qurbani.countDocuments({ ...baseQuery, qurbaniType: 'Sheep' });
+        const byCow = await Qurbani.countDocuments({ ...baseQuery, qurbaniType: 'Cow' });
+        const byCamel = await Qurbani.countDocuments({ ...baseQuery, qurbaniType: 'Camel' });
 
         res.json({
             summary: {
