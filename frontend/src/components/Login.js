@@ -42,9 +42,19 @@ const Login = ({ setIsAuthenticated, setAdminRole, setAdminInfo }) => {
                     localStorage.setItem('admin', JSON.stringify(response.data.admin));
                     console.log('✅ Admin info stored:', response.data.admin.role);
                 }
-                
-                // Small delay to ensure session is set
-                await new Promise(resolve => setTimeout(resolve, 100));
+
+                // Verify session is working before navigating
+                console.log('🔍 Verifying session...');
+                try {
+                    const authCheck = await authAPI.checkAuth();
+                    console.log('✅ Session verified:', authCheck.data);
+                } catch (sessionErr) {
+                    console.error('❌ Session verification failed:', sessionErr);
+                    setError('Login succeeded but session failed. Server configuration issue. Check server NODE_ENV=production');
+                    setLoading(false);
+                    return;
+                }
+
                 console.log('🚀 Navigating to dashboard...');
                 navigate('/dashboard');
             }

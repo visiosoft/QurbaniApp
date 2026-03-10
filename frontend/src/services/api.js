@@ -30,7 +30,7 @@ api.interceptors.response.use(
             // and if it's not the initial auth check
             const isLoginPage = window.location.pathname === '/login';
             const isAuthCheck = error.config?.url?.includes('/auth/check');
-            
+
             if (!isLoginPage && !isAuthCheck) {
                 console.log('Unauthorized - redirecting to login');
                 window.location.href = '/login';
