@@ -47,10 +47,19 @@ const Login = ({ setIsAuthenticated, setAdminRole, setAdminInfo }) => {
                 console.log('🔍 Verifying session...');
                 try {
                     const authCheck = await authAPI.checkAuth();
-                    console.log('✅ Session verified:', authCheck.data);
+                    console.log('Session check response:', authCheck.data);
+                    
+                    if (!authCheck.data.authenticated) {
+                        console.error('❌ Session verification failed: authenticated is false');
+                        setError('⚠️ LOGIN SUCCEEDED BUT SESSION FAILED\n\nThis is a server configuration issue.\n\nThe server must have NODE_ENV=production set for cross-domain cookies to work.\n\nWithout this, cookies cannot be sent from Netlify to your backend.\n\nPlease add NODE_ENV=production to your server .env file and restart.');
+                        setLoading(false);
+                        return;
+                    }
+                    
+                    console.log('✅ Session verified successfully');
                 } catch (sessionErr) {
-                    console.error('❌ Session verification failed:', sessionErr);
-                    setError('Login succeeded but session failed. Server configuration issue. Check server NODE_ENV=production');
+                    console.error('❌ Session verification request failed:', sessionErr);
+                    setError('Login succeeded but session check failed. Server configuration issue. Check server NODE_ENV=production');
                     setLoading(false);
                     return;
                 }

@@ -13,27 +13,13 @@ app.set('trust proxy', 1);
 // Connect to MongoDB
 connectDB();
 
-// CORS configuration
-const allowedOrigins = [
-    'http://localhost:3000',
-    'http://localhost:3001',
-    'https://hajjmanagement.netlify.app',
-    process.env.FRONTEND_URL
-].filter(Boolean);
-
-// Middleware
+// CORS configuration - Allow all origins
 app.use(cors({
-    origin: function (origin, callback) {
-        // Allow requests with no origin (like mobile apps or Postman)
-        if (!origin) return callback(null, true);
-        if (allowedOrigins.includes(origin)) {
-            callback(null, true);
-        } else {
-            callback(null, true); // Allow all for now
-        }
-    },
-    credentials: true
+    origin: true, // Allow all origins
+    credentials: true // Allow cookies
 }));
+
+// Body parsers
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
@@ -80,7 +66,7 @@ app.get('/api/config-check', (req, res) => {
             httpOnly: true,
             maxAge: '24 hours'
         },
-        corsOrigins: allowedOrigins,
+        corsOrigins: 'ALL (origin: true, credentials: true)',
         frontendUrl: process.env.FRONTEND_URL || 'not set',
         trustProxy: app.get('trust proxy'),
         timestamp: new Date().toISOString()
