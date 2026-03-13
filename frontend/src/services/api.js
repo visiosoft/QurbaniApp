@@ -5,15 +5,21 @@ const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api
 // Create axios instance with default config
 const api = axios.create({
     baseURL: API_BASE_URL,
-    withCredentials: true,
     headers: {
         'Content-Type': 'application/json',
     },
 });
 
-// Request interceptor
+// Request interceptor - Add JWT token to requests
 api.interceptors.request.use(
     (config) => {
+        // Get JWT token from localStorage
+        const token = localStorage.getItem('authToken');
+        
+        if (token) {
+            config.headers.Authorization = `Bearer ${token}`;
+        }
+        
         return config;
     },
     (error) => {
@@ -26,8 +32,11 @@ api.interceptors.response.use(
     (response) => response,
     (error) => {
         if (error.response?.status === 401) {
+            // Clear token and redirect to login
+            localStorage.removeItem('authToken');
+            localStorage.removeItem('admin');
+            
             // Only redirect to login if we're not already on login page
-            // and if it's not the initial auth check
             const isLoginPage = window.location.pathname === '/login';
             const isAuthCheck = error.config?.url?.includes('/auth/check');
 

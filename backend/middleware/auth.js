@@ -1,34 +1,74 @@
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
+const Admin = require('../models/Admin');
 
-// Middleware to check if admin is authenticated
-const requireAuth = (req, res, next) => {
-    console.log('🔐 Auth check:', {
-        hasSession: !!req.session,
-        sessionID: req.sessionID,
-        adminId: req.session?.adminId,
-        role: req.session?.role,
-        companyId: req.session?.companyId,
-        cookie: req.headers.cookie ? 'present' : 'missing'
-    });
+// Middleware to check if admin is authenticated (JWT-based)
+const requireAuth = async (req, res, next) => {
+    try {
+        const authHeader = req.headers.authorization;
 
-    if (req.session && req.session.adminId) {
-        // Add company ID to request for filtering
-        req.adminCompanyId = req.session.companyId;
-        req.adminRole = req.session.role;
+        console.log('🔐 Admin auth check:', {
+            hasAuthHeader: !!authHeader,
+            authType: authHeader?.substring(0, 10)
+        });
+
+        if (!authHeader || !authHeader.startsWith('Bearer ')) {
+            console.log('❌ No auth token provided');
+            return res.status(401).json({
+                error: 'Unauthorized',
+                message: 'Please log in to access this resource'
+            });
+        }
+
+        const token = authHeader.substring(7); // Remove 'Bearer ' prefix
+
+        // Verify token
+        const decoded = jwt.verify(
+            token,
+            process.env.JWT_SECRET || 'qurbani-jwt-secret-2026'
+        );
+
+        // Check if it's an admin token
+        if (decoded.userType !== 'admin') {
+            console.log('❌ Not an admin token');
+            return res.status(401).json({
+                error: 'Unauthorized',
+                message: 'Admin access required'
+            });
+        }
+
+        // Get admin from database
+        const admin = await Admin.findById(decoded.adminId)
+            .populate('companyId')
+            .select('-password');
+
+        if (!admin) {
+            return res.status(401).json({
+                error: 'Unauthorized',
+                message: 'Admin not found'
+            });
+        }
+
+        // Attach admin info to request for filtering
+        req.admin = admin;
+        req.adminId = admin._id;
+        req.adminCompanyId = decoded.companyId;
+        req.adminRole = decoded.role;
+
         console.log('✅ Admin authenticated:', {
-            adminId: req.session.adminId,
+            adminId: admin._id,
             role: req.adminRole,
             companyId: req.adminCompanyId
         });
-        return next();
-    }
 
-    console.log('❌ Auth failed - no session or adminId');
-    return res.status(401).json({
-        error: 'Unauthorized',
-        message: 'Please log in to access this resource'
-    });
+        next();
+    } catch (error) {
+        console.error('❌ JWT Admin Auth error:', error);
+        return res.status(401).json({
+            error: 'Unauthorized',
+            message: 'Invalid or expired token'
+        });
+    }
 };
 
 // Middleware to verify JWT token for mobile users
@@ -77,21 +117,17 @@ const requireUserAuth = async (req, res, next) => {
     }
 };
 
-// Middleware to check if user is already logged in
+// Middleware to check if user is already logged in (not needed with JWT)
 const checkAuth = (req, res, next) => {
-    if (req.session && req.session.adminId) {
-        return res.status(400).json({
-            error: 'Already logged in',
-            message: 'You are already authenticated'
-        });
-    }
-
+    // With JWT, we don't need to check for existing sessions
+    // Client manages the token
     next();
 };
 
 // Middleware to check if admin has super admin role
 const requireSuperAdmin = (req, res, next) => {
-    if (req.session && req.session.role === 'super_admin') {
+    // req.adminRole is set by requireAuth middleware
+    if (req.adminRole === 'super_admin') {
         return next();
     }
 

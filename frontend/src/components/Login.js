@@ -30,9 +30,22 @@ const Login = ({ setIsAuthenticated, setAdminRole, setAdminInfo }) => {
             console.log('✅ Login response:', response.data);
 
             if (response.data.success) {
-                console.log('✅ Login successful, setting auth state');
-                setIsAuthenticated(true);
+                console.log('✅ Login successful, saving JWT token');
+                
+                // Save JWT token to localStorage
+                if (response.data.authToken) {
+                    localStorage.setItem('authToken', response.data.authToken);
+                    console.log('✅ JWT token saved');
+                } else {
+                    console.error('❌ No authToken in response');
+                    setError('Login failed: No authentication token received');
+                    setLoading(false);
+                    return;
+                }
+                
+                // Save admin info
                 if (response.data.admin) {
+                    setIsAuthenticated(true);
                     if (setAdminRole) {
                         setAdminRole(response.data.admin.role);
                     }
@@ -41,27 +54,6 @@ const Login = ({ setIsAuthenticated, setAdminRole, setAdminInfo }) => {
                     }
                     localStorage.setItem('admin', JSON.stringify(response.data.admin));
                     console.log('✅ Admin info stored:', response.data.admin.role);
-                }
-
-                // Verify session is working before navigating
-                console.log('🔍 Verifying session...');
-                try {
-                    const authCheck = await authAPI.checkAuth();
-                    console.log('Session check response:', authCheck.data);
-
-                    if (!authCheck.data.authenticated) {
-                        console.error('❌ Session verification failed: authenticated is false');
-                        setError('⚠️ LOGIN SUCCEEDED BUT SESSION FAILED\n\nThis is a server configuration issue.\n\nThe server must have NODE_ENV=production set for cross-domain cookies to work.\n\nWithout this, cookies cannot be sent from Netlify to your backend.\n\nPlease add NODE_ENV=production to your server .env file and restart.');
-                        setLoading(false);
-                        return;
-                    }
-
-                    console.log('✅ Session verified successfully');
-                } catch (sessionErr) {
-                    console.error('❌ Session verification request failed:', sessionErr);
-                    setError('Login succeeded but session check failed. Server configuration issue. Check server NODE_ENV=production');
-                    setLoading(false);
-                    return;
                 }
 
                 console.log('🚀 Navigating to dashboard...');

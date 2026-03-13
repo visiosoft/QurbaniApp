@@ -172,19 +172,18 @@ const QurbaniList = ({ adminRole, adminInfo }) => {
 
     // Multi-select handlers
     const toggleSelectItem = (id) => {
-        setSelectedItems(prev => 
+        setSelectedItems(prev =>
             prev.includes(id) ? prev.filter(item => item !== id) : [...prev, id]
         );
     };
 
     const toggleSelectAll = () => {
-        if (selectedItems.length === qurbaniList.length) {
+        const readyItems = qurbaniList.filter(q => q.status === 'ready');
+        if (selectedItems.length === readyItems.length && readyItems.length > 0) {
             setSelectedItems([]);
         } else {
-            // Only select items that are not already done
-            const selectableItems = qurbaniList
-                .filter(q => q.status !== 'done')
-                .map(q => q._id);
+            // Only select items with 'ready' status
+            const selectableItems = readyItems.map(q => q._id);
             setSelectedItems(selectableItems);
         }
     };
@@ -202,11 +201,11 @@ const QurbaniList = ({ adminRole, adminInfo }) => {
         try {
             // Mark each selected item as done
             await Promise.all(
-                selectedItems.map(id => 
+                selectedItems.map(id =>
                     qurbaniAPI.updateStatus(id, { status: 'done' })
                 )
             );
-            
+
             setSelectedItems([]); // Clear selection
             fetchQurbani(); // Refresh list
             alert(`Successfully marked ${selectedItems.length} item(s) as done`);
@@ -298,13 +297,13 @@ const QurbaniList = ({ adminRole, adminInfo }) => {
                             <span className="selected-count">
                                 {selectedItems.length} item(s) selected
                             </span>
-                            <button 
+                            <button
                                 className="bulk-action-btn mark-done"
                                 onClick={handleBulkMarkAsDone}
                             >
                                 ✓ Mark Selected as Done
                             </button>
-                            <button 
+                            <button
                                 className="bulk-action-btn clear"
                                 onClick={() => setSelectedItems([])}
                             >
@@ -321,7 +320,7 @@ const QurbaniList = ({ adminRole, adminInfo }) => {
                                         <input
                                             type="checkbox"
                                             onChange={toggleSelectAll}
-                                            checked={selectedItems.length === qurbaniList.filter(q => q.status !== 'done').length && qurbaniList.length > 0}
+                                            checked={selectedItems.length === qurbaniList.filter(q => q.status === 'ready').length && qurbaniList.filter(q => q.status === 'ready').length > 0}
                                         />
                                     </th>
                                     <th>Type</th>
@@ -347,71 +346,71 @@ const QurbaniList = ({ adminRole, adminInfo }) => {
                                                     type="checkbox"
                                                     checked={selectedItems.includes(qurbani._id)}
                                                     onChange={() => toggleSelectItem(qurbani._id)}
-                                                    disabled={qurbani.status === 'done'}
+                                                    disabled={qurbani.status !== 'ready'}
                                                 />
                                             </td>
                                             <td>
-                                            <span className="qurbani-type">
-                                                🐑 {qurbani.qurbaniType}
-                                            </span>
-                                        </td>
-                                        <td>
-                                            <span className={`badge ${qurbani.accountType}`}>
-                                                {qurbani.accountType}
-                                            </span>
-                                        </td>
-                                        <td>
-                                            {qurbani.userId ? (
-                                                <div>
-                                                    <strong>{qurbani.userId.name}</strong><br />
-                                                    <small>{qurbani.userId.passportNumber}</small><br />
-                                                    <small>{qurbani.userId.phoneNumber}</small>
-                                                </div>
-                                            ) : (
-                                                'N/A'
-                                            )}
-                                        </td>
-                                        {isSuperAdmin && (
+                                                <span className="qurbani-type">
+                                                    🐑 {qurbani.qurbaniType}
+                                                </span>
+                                            </td>
                                             <td>
-                                                {qurbani.userId?.companyId ? (
-                                                    <span className="company-badge">
-                                                        {qurbani.userId.companyId.companyName}
-                                                    </span>
+                                                <span className={`badge ${qurbani.accountType}`}>
+                                                    {qurbani.accountType}
+                                                </span>
+                                            </td>
+                                            <td>
+                                                {qurbani.userId ? (
+                                                    <div>
+                                                        <strong>{qurbani.userId.name}</strong><br />
+                                                        <small>{qurbani.userId.passportNumber}</small><br />
+                                                        <small>{qurbani.userId.phoneNumber}</small>
+                                                    </div>
                                                 ) : (
                                                     'N/A'
                                                 )}
                                             </td>
-                                        )}
-                                        <td>
-                                            <select
-                                                className={`status-select ${qurbani.status}`}
-                                                value={qurbani.status}
-                                                onChange={(e) => handleStatusChange(qurbani._id, e.target.value)}
-                                                disabled={qurbani.status === 'done'}
-                                            >
-                                                <option value="pending">Pending</option>
-                                                <option value="ready">Ready</option>
-                                                <option value="done">Done</option>
-                                            </select>
-                                        </td>
-                                        <td>{formatDate(qurbani.createdAt)}</td>
-                                        <td>{formatDate(qurbani.completedAt)}</td>
-                                        <td>
-                                            {qurbani.status !== 'done' && (
-                                                <button
-                                                    className="done-button"
-                                                    onClick={() => handleMarkAsDone(qurbani._id)}
-                                                >
-                                                    ✓ Mark Done
-                                                </button>
+                                            {isSuperAdmin && (
+                                                <td>
+                                                    {qurbani.userId?.companyId ? (
+                                                        <span className="company-badge">
+                                                            {qurbani.userId.companyId.companyName}
+                                                        </span>
+                                                    ) : (
+                                                        'N/A'
+                                                    )}
+                                                </td>
                                             )}
-                                        </td>
-                                    </tr>
-                                ))
-                            )}
-                        </tbody>
-                    </table>
-                </div>
+                                            <td>
+                                                <select
+                                                    className={`status-select ${qurbani.status}`}
+                                                    value={qurbani.status}
+                                                    onChange={(e) => handleStatusChange(qurbani._id, e.target.value)}
+                                                    disabled={qurbani.status === 'done'}
+                                                >
+                                                    <option value="pending">Pending</option>
+                                                    <option value="ready">Ready</option>
+                                                    <option value="done">Done</option>
+                                                </select>
+                                            </td>
+                                            <td>{formatDate(qurbani.createdAt)}</td>
+                                            <td>{formatDate(qurbani.completedAt)}</td>
+                                            <td>
+                                                {qurbani.status === 'ready' && (
+                                                    <button
+                                                        className="done-button"
+                                                        onClick={() => handleMarkAsDone(qurbani._id)}
+                                                    >
+                                                        ✓ Mark Done
+                                                    </button>
+                                                )}
+                                            </td>
+                                        </tr>
+                                    ))
+                                )}
+                            </tbody>
+                        </table>
+                    </div>
                 </>
             )}
 

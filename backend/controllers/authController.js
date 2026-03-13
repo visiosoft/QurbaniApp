@@ -99,48 +99,43 @@ const login = async (req, res) => {
                 });
             }
 
-            // Set admin session with company context
-            req.session.adminId = admin._id.toString();
-            req.session.username = admin.username;
-            req.session.userType = 'admin';
-            req.session.companyId = admin.companyId._id.toString();
-            req.session.role = admin.role;
+            // Generate JWT token for admin
+            const tokenPayload = {
+                adminId: admin._id.toString(),
+                username: admin.username,
+                userType: 'admin',
+                companyId: admin.companyId._id.toString(),
+                role: admin.role
+            };
 
-            console.log('🔐 Admin login successful, session set:', {
-                sessionID: req.sessionID,
-                adminId: req.session.adminId,
-                role: req.session.role
+            const authToken = jwt.sign(
+                tokenPayload,
+                process.env.JWT_SECRET || 'qurbani-jwt-secret-2026',
+                { expiresIn: '7d' } // Token expires in 7 days
+            );
+
+            console.log('🔐 Admin login successful, JWT token generated:', {
+                adminId: admin._id,
+                role: admin.role
             });
 
-            // Force session save before responding
-            return req.session.save((err) => {
-                if (err) {
-                    console.error('❌ Session save error:', err);
-                    return res.status(500).json({
-                        error: 'Session error',
-                        message: 'Failed to create session'
-                    });
-                }
-
-                console.log('✅ Session saved successfully');
-
-                return res.json({
-                    success: true,
-                    message: 'Admin login successful',
-                    userType: 'admin',
-                    admin: {
-                        id: admin._id,
-                        username: admin.username,
-                        fullName: admin.fullName,
-                        email: admin.email,
-                        role: admin.role,
-                        company: {
-                            id: admin.companyId._id,
-                            name: admin.companyId.companyName,
-                            code: admin.companyId.companyCode
-                        }
+            return res.json({
+                success: true,
+                message: 'Admin login successful',
+                userType: 'admin',
+                authToken: authToken,
+                admin: {
+                    id: admin._id,
+                    username: admin.username,
+                    fullName: admin.fullName,
+                    email: admin.email,
+                    role: admin.role,
+                    company: {
+                        id: admin.companyId._id,
+                        name: admin.companyId.companyName,
+                        code: admin.companyId.companyCode
                     }
-                });
+                }
             });
         }
 
@@ -222,19 +217,12 @@ const login = async (req, res) => {
 // Admin logout handler
 const logout = async (req, res) => {
     try {
-        req.session.destroy((err) => {
-            if (err) {
-                return res.status(500).json({
-                    error: 'Logout failed',
-                    message: err.message
-                });
-            }
-
-            res.clearCookie('connect.sid');
-            res.json({
-                success: true,
-                message: 'Logout successful'
-            });
+        // With JWT, logout is handled client-side by removing the token
+        // Server can optionally maintain a blacklist of invalidated tokens
+        // For now, just confirm logout
+        res.json({
+            success: true,
+            message: 'Logout successful'
         });
     } catch (error) {
         console.error('Logout error:', error);
@@ -247,45 +235,59 @@ const logout = async (req, res) => {
 
 // Check authentication status
 const checkAuth = async (req, res) => {
-    console.log('🔍 Auth check called:', {
-        hasSession: !!req.session,
-        sessionID: req.sessionID,
-        adminId: req.session?.adminId,
-        cookieHeader: req.headers.cookie ? 'present' : 'MISSING',
-        origin: req.headers.origin
-    });
+    try {
+        const authHeader = req.headers.authorization;
 
-    if (req.session && req.session.adminId) {
-        try {
-            const admin = await Admin.findById(req.session.adminId).populate('companyId');
+        console.log('🔍 Auth check called:', {
+            hasAuthHeader: !!authHeader,
+            origin: req.headers.origin
+        });
 
-            if (!admin) {
-                console.log('❌ Admin not found for session adminId:', req.session.adminId);
-                return res.json({ authenticated: false });
-            }
-
-            console.log('✅ Auth check passed for admin:', admin.username);
-            return res.json({
-                authenticated: true,
-                admin: {
-                    username: admin.username,
-                    fullName: admin.fullName,
-                    role: admin.role,
-                    company: {
-                        id: admin.companyId._id,
-                        name: admin.companyId.companyName,
-                        code: admin.companyId.companyCode
-                    }
-                }
-            });
-        } catch (error) {
-            console.error('❌ Check auth error:', error);
+        if (!authHeader || !authHeader.startsWith('Bearer ')) {
+            console.log('❌ No auth token provided');
             return res.json({ authenticated: false });
         }
-    }
 
-    console.log('❌ No session or no adminId in session');
-    res.json({ authenticated: false });
+        const token = authHeader.substring(7); // Remove 'Bearer ' prefix
+
+        // Verify token
+        const decoded = jwt.verify(
+            token,
+            process.env.JWT_SECRET || 'qurbani-jwt-secret-2026'
+        );
+
+        // Check if it's an admin token
+        if (decoded.userType !== 'admin') {
+            console.log('❌ Not an admin token');
+            return res.json({ authenticated: false });
+        }
+
+        const admin = await Admin.findById(decoded.adminId).populate('companyId');
+
+        if (!admin) {
+            console.log('❌ Admin not found for token adminId:', decoded.adminId);
+            return res.json({ authenticated: false });
+        }
+
+        console.log('✅ Auth check passed for admin:', admin.username);
+        return res.json({
+            authenticated: true,
+            admin: {
+                id: admin._id,
+                username: admin.username,
+                fullName: admin.fullName,
+                role: admin.role,
+                company: {
+                    id: admin.companyId._id,
+                    name: admin.companyId.companyName,
+                    code: admin.companyId.companyCode
+                }
+            }
+        });
+    } catch (error) {
+        console.error('❌ Check auth error:', error);
+        return res.json({ authenticated: false });
+    }
 };
 
 // Check user authentication status

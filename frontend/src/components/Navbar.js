@@ -12,10 +12,18 @@ const Navbar = ({ isAuthenticated, setIsAuthenticated, adminRole, setAdminRole, 
             await authAPI.logout();
             setIsAuthenticated(false);
             setAdminRole(null);
+            // Clear JWT token and admin data from localStorage
+            localStorage.removeItem('authToken');
             localStorage.removeItem('admin');
             navigate('/login');
         } catch (err) {
             console.error('Logout error:', err);
+            // Clear local data even if API call fails
+            setIsAuthenticated(false);
+            setAdminRole(null);
+            localStorage.removeItem('authToken');
+            localStorage.removeItem('admin');
+            navigate('/login');
         }
     };
 
