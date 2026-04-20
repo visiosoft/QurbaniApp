@@ -1,0 +1,229 @@
+.user-portal-page {
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+}
+
+.user-portal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 16px;
+    padding: 24px;
+    background: linear-gradient(135deg, #f7f3e8 0%, #fffdf8 100%);
+    border: 1px solid #eadfcb;
+    border-radius: 16px;
+}
+
+.user-portal-header h1 {
+    margin: 0 0 8px;
+}
+
+.user-portal-header p {
+    margin: 0;
+    color: #6a5a43;
+}
+
+.user-portal-identity {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    min-width: 220px;
+    padding: 14px 16px;
+    background: #fff;
+    border: 1px solid #eadfcb;
+    border-radius: 12px;
+    color: #3d321f;
+}
+
+.user-portal-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 20px;
+}
+
+.user-portal-grid.single-column {
+    grid-template-columns: 1fr;
+}
+
+.user-card {
+    padding: 24px;
+    background: #fff;
+    border: 1px solid #eadfcb;
+    border-radius: 16px;
+    box-shadow: 0 10px 30px rgba(76, 56, 28, 0.06);
+}
+
+.user-card h2 {
+    margin-top: 0;
+    margin-bottom: 18px;
+}
+
+.user-detail-list {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 16px;
+    margin: 0;
+}
+
+.user-detail-list div {
+    padding: 14px;
+    background: #faf6ee;
+    border-radius: 12px;
+}
+
+.user-detail-list dt {
+    margin-bottom: 6px;
+    font-size: 0.85rem;
+    color: #8a7655;
+}
+
+.user-detail-list dd {
+    margin: 0;
+    font-weight: 600;
+    color: #2f2415;
+}
+
+.status-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-top: 20px;
+}
+
+.status-button,
+.inline-action-button {
+    padding: 10px 16px;
+    border: 1px solid #c8b38a;
+    border-radius: 999px;
+    background: #fff;
+    color: #5b4622;
+    cursor: pointer;
+    transition: background-color 0.2s ease, color 0.2s ease, opacity 0.2s ease;
+}
+
+.status-button.active,
+.inline-action-button {
+    background: #8f6a2a;
+    color: #fff;
+    border-color: #8f6a2a;
+}
+
+.status-button:disabled,
+.inline-action-button:disabled {
+    cursor: not-allowed;
+    opacity: 0.6;
+}
+
+.group-card .section-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 16px;
+    margin-bottom: 20px;
+}
+
+.group-card .section-header h2 {
+    margin-bottom: 6px;
+}
+
+.group-card .section-header p {
+    margin: 0;
+    color: #6a5a43;
+}
+
+.representative-badge {
+    padding: 8px 12px;
+    background: #faf6ee;
+    border-radius: 999px;
+    color: #6d5732;
+    font-size: 0.9rem;
+}
+
+.user-table-wrap {
+    overflow-x: auto;
+}
+
+.user-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.user-table th,
+.user-table td {
+    padding: 12px 10px;
+    border-bottom: 1px solid #f0e5d4;
+    text-align: left;
+}
+
+.user-table th {
+    font-size: 0.9rem;
+    color: #7d6a4c;
+}
+
+.muted-label {
+    color: #9f8d71;
+    font-size: 0.9rem;
+}
+
+.user-profile-form {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.user-profile-form label {
+    font-weight: 600;
+    color: #4a3a20;
+}
+
+.user-profile-form input {
+    padding: 12px 14px;
+    border: 1px solid #d9c6a7;
+    border-radius: 10px;
+    font-size: 1rem;
+}
+
+.user-portal-error,
+.user-portal-success,
+.user-portal-loading {
+    padding: 14px 16px;
+    border-radius: 12px;
+}
+
+.user-portal-error {
+    background: #fdecec;
+    color: #9d2323;
+    border: 1px solid #f4c3c3;
+}
+
+.user-portal-success {
+    background: #eef9f0;
+    color: #267041;
+    border: 1px solid #b9e0c3;
+}
+
+.user-portal-loading {
+    background: #fff;
+    border: 1px solid #eadfcb;
+}
+
+@media (max-width: 900px) {
+    .user-portal-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .user-detail-list {
+        grid-template-columns: 1fr;
+    }
+
+    .user-portal-header,
+    .group-card .section-header {
+        flex-direction: column;
+    }
+
+    .user-portal-identity {
+        min-width: 0;
+        width: 100%;
+    }
+}
